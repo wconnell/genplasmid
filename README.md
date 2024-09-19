@@ -1,3 +1,3 @@
 ## GenPlasmid
 
-Generative design form multi-component plasmids.
+Generative design for multi-component plasmids.
