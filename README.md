@@ -1,1 +1,3 @@
-## plasmid_design
+## GenPlasmid
+
+Generative design form multi-component plasmids.
