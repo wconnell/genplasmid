@@ -32,7 +32,8 @@ def genbank_to_glm2(record: str) -> str:
             unique_features.append(feature)
 
     for feature in unique_features:
-        strand = strand_map[feature.location.strand]
+        # Set strand to "<+>" for all features except CDS
+        strand = strand_map[feature.location.strand] if feature.type == 'CDS' else "<+>"
 
         # Handle compound locations
         if isinstance(feature.location, CompoundLocation):
