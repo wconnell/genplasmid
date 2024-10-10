@@ -151,7 +151,7 @@ def perform_clustering(adata, feature_column, results_dir, metrics_df):
 
 def main(embeddings_file):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_dir = f"../results/eval_embs_{timestamp}"
+    results_dir = f"../results/eval/{timestamp}"
     os.makedirs(results_dir, exist_ok=True)
 
     all_feat = load_and_preprocess_data()
@@ -162,12 +162,18 @@ def main(embeddings_file):
     
     all_feat = process_entrez_genes(all_feat)
     
-    embeddings = np.load(embeddings_file)
+    embeddings = pd.read_parquet(embeddings_file)
+    
+    # align the embeddings and the features
+    embeddings = embeddings.dropna()
+    all_feat = all_feat.set_index('ID')
+    all_feat.index = all_feat.index.astype(int)
+    all_feat = all_feat.loc[embeddings.index]   
     
     if len(embeddings) != len(all_feat):
         raise ValueError("Number of embeddings does not match number of samples in all_feat")
     
-    adata = create_anndata(embeddings, all_feat)
+    adata = create_anndata(embeddings.to_numpy(), all_feat)
     
     metrics_df = pd.DataFrame(columns=['Feature', 'NMI', 'ARI'])
 
