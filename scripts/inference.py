@@ -94,7 +94,7 @@ def main():
     # Create timestamped results directory only on the main process
     if accelerator.is_main_process:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        results_dir = os.path.join("..", "results", "inference", f"{timestamp}-{run_id}")
+        results_dir = os.path.join("/scratch/wconnell/genplasmid", "results", "inference", f"{timestamp}-{run_id}")
         os.makedirs(results_dir, exist_ok=True)
 
         # Setup logging
@@ -155,4 +155,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # run with: accelerate launch inference.py
+    # run with: python inference.py
+    # distributed training is handeld automatically by transformers.Trainer
+    # no need to use accelerate launch
