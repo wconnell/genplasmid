@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 import uuid
 import shutil
+from itertools import chain
 
 import torch
 from datasets import load_dataset
@@ -53,11 +54,40 @@ def find_batch_size(starting_batch_size, model, tokenizer, train_dataset):
 
     return train_batch()
 
+def tokenize_and_chunk(examples, tokenizer):
+    tokenized = tokenizer(examples['glm2_sequence'], truncation=False, padding=False)
+    result = {'input_ids': [], 'attention_mask': []}
+    
+    for ids, mask in zip(tokenized['input_ids'], tokenized['attention_mask']):
+        if len(ids) == 0:  # Check for empty sequences
+            logging.warning("Empty sequence encountered, skipping.")
+            continue
+        
+        for i in range(0, len(ids), 4096):
+            chunk_ids = ids[i:i+4096]
+            chunk_mask = mask[i:i+4096]
+            
+            # Pad if necessary
+            if len(chunk_ids) < 4096:
+                padding_length = 4096 - len(chunk_ids)
+                chunk_ids = chunk_ids + [tokenizer.pad_token_id] * padding_length
+                chunk_mask = chunk_mask + [0] * padding_length
+            
+            # Check for valid chunk sizes
+            if len(chunk_ids) != 4096 or len(chunk_mask) != 4096:
+                logging.warning(f"Invalid chunk size: {len(chunk_ids)} for ids or {len(chunk_mask)} for mask, skipping.")
+                continue
+            
+            result['input_ids'].append(chunk_ids)
+            result['attention_mask'].append(chunk_mask)
+    
+    return result
+
 def main():
     parser = argparse.ArgumentParser(description="Fine-tune gLM2 model")
     parser.add_argument("--num_train_epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--starting_batch_size", type=int, default=1, help="Starting batch size for processing")
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=5, help="Number of gradient accumulation steps")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=8, help="Number of gradient accumulation steps")
     args = parser.parse_args()
 
     # Generate a unique run ID
@@ -81,28 +111,33 @@ def main():
     # subset for testing
     data = data.select(range(1000))
     data = data.filter(lambda x: x['GenBank Raw'] != '')
-    data = data.train_test_split(test_size=0.2)
     data = data.map(lambda x: {'glm2_sequence': genbank_to_glm2(x['GenBank Raw'])})
     data = data.filter(lambda x: x['glm2_sequence'] != '')
+    data = data.train_test_split(test_size=0.2)
 
     # Load the pre-trained model and tokenizer
     logging.info("Loading pre-trained model and tokenizer")
     model = AutoModelForMaskedLM.from_pretrained('tattabio/gLM2_150M', torch_dtype=torch.bfloat16, trust_remote_code=True).cuda()
     tokenizer = AutoTokenizer.from_pretrained('tattabio/gLM2_150M', trust_remote_code=True)
 
-    def tokenize_function(examples):
-        return tokenizer(examples['glm2_sequence'], truncation=True, padding='max_length', max_length=4096)
-
-    # Apply tokenization to the datasets
-    logging.info("Tokenizing dataset")
-    data = data.map(tokenize_function, batched=True)
-
+    # Apply tokenization and chunking to the datasets
+    logging.info("Tokenizing and chunking dataset")
+    tokenized_data = data.map(
+        lambda examples: tokenize_and_chunk(examples, tokenizer),
+        batched=True,
+        remove_columns=data['train'].column_names
+    )
+    
     # Set the format of the datasets to return PyTorch tensors
-    data.set_format(type='torch', columns=['input_ids', 'attention_mask'])
+    tokenized_data.set_format(type='torch', columns=['input_ids', 'attention_mask'])
+    
+    # log each dataset size
+    logging.info(f"Training dataset size: {len(tokenized_data['train'])}")
+    logging.info(f"Evaluation dataset size: {len(tokenized_data['test'])}")
 
     # Find executable batch size
     logging.info("Finding executable batch size")
-    executable_batch_size = find_batch_size(args.starting_batch_size, model, tokenizer, data['train'])
+    executable_batch_size = find_batch_size(args.starting_batch_size, model, tokenizer, tokenized_data['train'])
     if os.path.exists("./temp_output"):
         shutil.rmtree("./temp_output") 
     logging.info(f"Found executable batch size: {executable_batch_size}")
@@ -125,8 +160,8 @@ def main():
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=data['train'],
-        eval_dataset=data['test'],
+        train_dataset=tokenized_data['train'],
+        eval_dataset=tokenized_data['test'],
         data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm_probability=0.15),
     )
 
