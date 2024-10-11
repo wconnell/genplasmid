@@ -162,7 +162,12 @@ def main(embeddings_file):
     
     all_feat = process_entrez_genes(all_feat)
     
-    embeddings = np.load(embeddings_file)
+    embeddings = pd.read_parquet(embeddings_file)
+    embeddings = embeddings.dropna()
+
+    # align metadata with embeddings
+    all_feat = all_feat.set_index('ID').astype(int)
+    all_feat = all_feat.loc[embeddings.index]
     
     if len(embeddings) != len(all_feat):
         raise ValueError("Number of embeddings does not match number of samples in all_feat")
