@@ -87,13 +87,7 @@ def find_batch_size(starting_batch_size, model, tokenizer, train_dataset):
 
     return train_batch()
 
-def main():
-    parser = argparse.ArgumentParser(description="Fine-tune gLM2 model")
-    parser.add_argument("--num_train_epochs", type=int, default=5, help="Number of training epochs")
-    parser.add_argument("--starting_batch_size", type=int, default=8, help="Starting batch size for processing")
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=5, help="Number of gradient accumulation steps")
-    args = parser.parse_args()
-
+def main(num_train_epochs, starting_batch_size, gradient_accumulation_steps):
     run_id = str(uuid.uuid4())
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_dir = os.path.join("..", "results", "finetune", f"{timestamp}-{run_id}")
@@ -101,7 +95,7 @@ def main():
 
     setup_logging(results_dir)
     logging.info(f"Starting fine-tuning script with run ID: {run_id}")
-    logging.info(f"Command-line arguments: {vars(args)}")
+    logging.info(f"Arguments: num_train_epochs={num_train_epochs}, starting_batch_size={starting_batch_size}, gradient_accumulation_steps={gradient_accumulation_steps}")
 
     logging.info("Loading and preparing dataset")
     data = load_dataset("wconnell/openplasmid")['train']
@@ -134,10 +128,10 @@ def main():
 
     training_args = TrainingArguments(
         output_dir=os.path.join(results_dir, "checkpoints"),
-        num_train_epochs=args.num_train_epochs,
+        num_train_epochs=num_train_epochs,
         per_device_train_batch_size=executable_batch_size,
         per_device_eval_batch_size=executable_batch_size,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        gradient_accumulation_steps=gradient_accumulation_steps,
         save_total_limit=5,
         logging_dir=os.path.join(results_dir, "logs"),
         logging_steps=1,
@@ -166,7 +160,11 @@ def main():
     config = {
         "run_id": run_id,
         "timestamp": timestamp,
-        "args": vars(args),
+        "args": {
+            "num_train_epochs": num_train_epochs,
+            "starting_batch_size": starting_batch_size,
+            "gradient_accumulation_steps": gradient_accumulation_steps
+        },
         "model_name": "gLM2_150M_finetuned",
         "final_model_path": final_model_path,
         "executable_batch_size": executable_batch_size,
@@ -174,4 +172,10 @@ def main():
     save_config(config, results_dir)
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Fine-tune gLM2 model")
+    parser.add_argument("--num_train_epochs", type=int, default=5, help="Number of training epochs")
+    parser.add_argument("--starting_batch_size", type=int, default=8, help="Starting batch size for processing")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=5, help="Number of gradient accumulation steps")
+    args = parser.parse_args()
+
+    main(args.num_train_epochs, args.starting_batch_size, args.gradient_accumulation_steps)
