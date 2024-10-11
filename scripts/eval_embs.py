@@ -185,7 +185,7 @@ def main(embeddings_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate embeddings for plasmid sequences")
-    parser.add_argument("embeddings_file", help="Path to the numpy file containing embeddings")
+    parser.add_argument("embeddings_file", help="Path to the parquet file containing embeddings. Index should be 'ID'.")
     args = parser.parse_args()
     
     main(args.embeddings_file)
