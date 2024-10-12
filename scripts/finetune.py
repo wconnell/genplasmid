@@ -7,13 +7,13 @@ import uuid
 import shutil
 import torch
 from datasets import load_dataset
+from accelerate import find_executable_batch_size
 from transformers import (
     AutoModelForMaskedLM,
     AutoTokenizer,
     DataCollatorForLanguageModeling,
     TrainingArguments,
     Trainer,
-    find_executable_batch_size
 )
 
 from genplasmid.datasets import genbank_to_glm2
@@ -99,6 +99,7 @@ def main(num_train_epochs, starting_batch_size, gradient_accumulation_steps):
 
     logging.info("Loading and preparing dataset")
     data = load_dataset("wconnell/openplasmid")['train']
+    # data = data.select(range(100))
     data = data.filter(lambda x: x['GenBank Raw'] != '')
     data = data.map(lambda x: {'glm2_sequence': genbank_to_glm2(x['GenBank Raw'])})
     data = data.filter(lambda x: x['glm2_sequence'] != '')
