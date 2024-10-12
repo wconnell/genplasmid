@@ -163,12 +163,11 @@ def main(embeddings_file):
     all_feat = process_entrez_genes(all_feat)
     
     embeddings = pd.read_parquet(embeddings_file)
-    
-    # align the embeddings and the features
     embeddings = embeddings.dropna()
-    all_feat = all_feat.set_index('ID')
-    all_feat.index = all_feat.index.astype(int)
-    all_feat = all_feat.loc[embeddings.index]   
+
+    # align metadata with embeddings
+    all_feat = all_feat.set_index('ID').astype(int)
+    all_feat = all_feat.loc[embeddings.index]
     
     if len(embeddings) != len(all_feat):
         raise ValueError("Number of embeddings does not match number of samples in all_feat")
@@ -186,7 +185,7 @@ def main(embeddings_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate embeddings for plasmid sequences")
-    parser.add_argument("embeddings_file", help="Path to the numpy file containing embeddings")
+    parser.add_argument("embeddings_file", help="Path to the parquet file containing embeddings. Index should be 'ID'.")
     args = parser.parse_args()
     
     main(args.embeddings_file)
