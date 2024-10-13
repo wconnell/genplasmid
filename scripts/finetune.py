@@ -131,16 +131,19 @@ def main(num_train_epochs, starting_batch_size, gradient_accumulation_steps):
         output_dir=os.path.join(results_dir, "checkpoints"),
         num_train_epochs=num_train_epochs,
         per_device_train_batch_size=executable_batch_size,
-        per_device_eval_batch_size=executable_batch_size,
+        per_device_eval_batch_size=executable_batch_size*8, # this works for a batch_size=1 on 24gb GPU
         gradient_accumulation_steps=gradient_accumulation_steps,
         save_total_limit=5,
         logging_dir=os.path.join(results_dir, "logs"),
-        logging_steps=1,
+        logging_strategy="steps",
+        logging_first_step=True,
+        logging_steps=100, # effectively logging every n_samples = batch_size * n_gpus * gradient_accumulation_steps * logging_steps
         eval_strategy="epoch",
         save_strategy="epoch",
-        evaluation_strategy="epoch",  # Added this line
         load_best_model_at_end=True,  # Added this line
-        metric_for_best_model="eval_loss",  # Added this line
+        metric_for_best_model="eval_loss",
+        bf16=True,
+        report_to=["tensorboard"],
     )
 
     trainer = Trainer(
@@ -175,8 +178,8 @@ def main(num_train_epochs, starting_batch_size, gradient_accumulation_steps):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fine-tune gLM2 model")
     parser.add_argument("--num_train_epochs", type=int, default=5, help="Number of training epochs")
-    parser.add_argument("--starting_batch_size", type=int, default=8, help="Starting batch size for processing")
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=5, help="Number of gradient accumulation steps")
+    parser.add_argument("--starting_batch_size", type=int, default=1, help="Starting batch size for processing")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=8, help="Number of gradient accumulation steps")
     args = parser.parse_args()
 
     main(args.num_train_epochs, args.starting_batch_size, args.gradient_accumulation_steps)
