@@ -86,7 +86,11 @@ def main():
     parser.add_argument("--model_path", type=str, default=None, help="Path to the finetuned model safetensors file")
     args = parser.parse_args()
 
+    # Initialize the Accelerator with distributed training
     accelerator = Accelerator()
+
+    # Ensure that the script is launched with the correct parameters for distributed training
+    logging.info(f"Running on {accelerator.state.num_processes} processes.")
 
     # Generate a unique run ID
     run_id = str(uuid.uuid4())
@@ -146,6 +150,7 @@ def main():
             "timestamp": timestamp,
             "args": vars(args),
             "model_name": model_name,
+            "model_path": args.model_path,
             "num_samples": len(df),
             "embedding_dim": df.shape[1],
             "output_file": output_file,
@@ -155,6 +160,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # run with: python inference.py
-    # distributed training is handeld automatically by transformers.Trainer
-    # no need to use accelerate launch
+    # run with: accelerate launch inference.py 
