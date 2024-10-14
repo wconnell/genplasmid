@@ -166,7 +166,8 @@ def main(embeddings_file):
     embeddings = embeddings.dropna()
 
     # align metadata with embeddings
-    all_feat = all_feat.set_index('ID').astype(int)
+    all_feat = all_feat.set_index('ID')
+    all_feat.index = all_feat.index.astype(int)
     all_feat = all_feat.loc[embeddings.index]
     
     if len(embeddings) != len(all_feat):
