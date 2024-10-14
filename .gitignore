@@ -163,6 +163,4 @@ cython_debug/
 
 # Data
 data/*
-
-# Models
-finetune/
+results/*
