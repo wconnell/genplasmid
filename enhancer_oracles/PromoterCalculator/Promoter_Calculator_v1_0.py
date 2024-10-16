@@ -335,11 +335,11 @@ class Promoter_Calculator(object):
         return best, seq_query
 
 
-def process_sequences(sequences, TSS_range=None):
+def process_sequences(sequences):
     calc = Promoter_Calculator()
     results = []
     for seq in sequences:
-        TSS_range = TSS_range if TSS_range is not None else [0, len(seq)]
+        TSS_range = [0, len(seq)]
         calc.run(seq, TSS_range=TSS_range)
         res = calc.output()
         results.append(res)
@@ -359,7 +359,7 @@ if __name__ == "__main__":
     tss_range = args.tss_range
 
     begin = time.time()
-    results = process_sequences(sequences, TSS_range=tss_range)
+    results = process_sequences(sequences)
 
     for idx, output in enumerate(results):
         print(f"Results for sequence {idx + 1}:")
