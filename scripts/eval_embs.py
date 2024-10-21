@@ -163,6 +163,7 @@ def main(embeddings_file):
     all_feat = process_entrez_genes(all_feat)
     
     embeddings = pd.read_parquet(embeddings_file)
+    embeddings.index = embeddings.index.astype(int)
     embeddings = embeddings.dropna()
 
     # align metadata with embeddings
